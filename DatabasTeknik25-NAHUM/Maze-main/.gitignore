@@ -1,0 +1,14 @@
+__pycache__/
+.venv/
+
+data/
+OtherResources/media
+*.mp4
+
+LaTeXReport/*
+!LaTeXReport/*.{pdf,png,tex}
+
+.vscode/
+.idea/
+
+.DS_Store
