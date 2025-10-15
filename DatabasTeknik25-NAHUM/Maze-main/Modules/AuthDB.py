@@ -1,13 +1,8 @@
-# Modules/AuthDB.py — SQL-backend (kompatibel signatur med pickle-versionen)
-import os, sqlite3, hashlib, secrets, time, pickle
+import os, sqlite3, hashlib, secrets, time
 from typing import List, Tuple, Optional, Any, Iterable
 
 DB_DIR = "data"
 DB_PATH = os.path.join(DB_DIR, "game.db")
-# För engångsmigrering från tidigare pickle (om sådan fanns)
-PICKLE_PATH = os.path.join(DB_DIR, "game.pickle")
-
-# ---------- Intern SQL-hjälp ----------
 
 def _connect() -> sqlite3.Connection:
     os.makedirs(DB_DIR, exist_ok=True)
@@ -27,6 +22,7 @@ def _table_exists(conn: sqlite3.Connection, name: str) -> bool:
     return row is not None
 
 def _ensure_schema(conn: sqlite3.Connection):
+    #Användare
     _exec(conn, """
     CREATE TABLE IF NOT EXISTS users(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -35,6 +31,7 @@ def _ensure_schema(conn: sqlite3.Connection):
         pw_hash BLOB NOT NULL,
         created_at INTEGER NOT NULL
     )""")
+    #Poäng
     _exec(conn, """
     CREATE TABLE IF NOT EXISTS scores(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,6 +40,7 @@ def _ensure_schema(conn: sqlite3.Connection):
         time_sec INTEGER NOT NULL,
         created_at INTEGER NOT NULL
     )""")
+    #Länder
     _exec(conn, """
     CREATE TABLE IF NOT EXISTS progress(
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -51,46 +49,17 @@ def _ensure_schema(conn: sqlite3.Connection):
     )""")
     conn.commit()
 
-def _maybe_migrate_from_pickle(conn: sqlite3.Connection):
-    """Migrera från tidigare pickle-fil om DB är tom och pickle finns."""
-    # Migrera bara om users-tabellen är tom
-    count = _exec(conn, "SELECT COUNT(*) FROM users").fetchone()[0]
-    if count != 0: 
-        return
-    if not os.path.exists(PICKLE_PATH):
-        return
-    try:
-        with open(PICKLE_PATH, "rb") as f:
-            db = pickle.load(f)
-    except Exception:
-        return
-    # förväntad struktur i pickle: {"users":[{id,username,pw_salt,pw_hash,created_at,progress:[]},...],
-    #                               "scores":[{id,user_id,level,time_sec,created_at},...]}
-    users = db.get("users", [])
-    scores = db.get("scores", [])
-    # infoga users
-    for u in users:
-        _exec(conn, "INSERT OR IGNORE INTO users(id,username,pw_salt,pw_hash,created_at) VALUES(?,?,?,?,?)",
-              (int(u["id"]), u["username"], u["pw_salt"], u["pw_hash"], int(u.get("created_at", int(time.time())))))
-        for c in u.get("progress", []) or []:
-            _exec(conn, "INSERT OR IGNORE INTO progress(user_id, country_id) VALUES(?,?)", (int(u["id"]), str(c)))
-    # infoga scores
-    for s in scores:
-        _exec(conn, "INSERT INTO scores(id,user_id,level,time_sec,created_at) VALUES(?,?,?,?,?)",
-              (int(s["id"]), int(s["user_id"]), int(s["level"]), int(s["time_sec"]), int(s.get("created_at", int(time.time())))))
-    conn.commit()
-
-# ---------- Publikt API (samma som tidigare) ----------
+# Publikt API (samma som tidigare)
 
 def init_db():
-    """Skapa tabeller och migrera ev. pickle-data en gång."""
+    """Skapa tabeller (om de saknas)."""
     conn = _connect()
     try:
         _ensure_schema(conn)
-        _maybe_migrate_from_pickle(conn)
     finally:
         conn.close()
 
+# Skapa ny användare
 def create_user(username: str, password: str):
     username = (username or "").strip()
     password = (password or "")
@@ -98,7 +67,6 @@ def create_user(username: str, password: str):
         return False, "Användarnamn och lösenord måste vara minst 3 tecken."
     conn = _connect()
     try:
-        # finns?
         row = _exec(conn, "SELECT id FROM users WHERE username=?", (username,)).fetchone()
         if row:
             return False, "Användarnamnet är upptaget."
@@ -112,6 +80,7 @@ def create_user(username: str, password: str):
     finally:
         conn.close()
 
+# Verifiera inloggning
 def verify_user(username: str, password: str):
     conn = _connect()
     try:
@@ -152,9 +121,10 @@ def top_times(level: int, limit: int = 10) -> List[Tuple[str, int]]:
     finally:
         conn.close()
 
-# ---------- Progress (länder) ----------
+#  Progress
 
 def add_country_progress(user_id: int, country_id: str) -> bool:
+    """Lägg till land i användarens progress. Returnerar true om det lyckades."""
     conn = _connect()
     try:
         _exec(conn, "INSERT OR IGNORE INTO progress(user_id, country_id) VALUES(?,?)",
@@ -165,6 +135,7 @@ def add_country_progress(user_id: int, country_id: str) -> bool:
         conn.close()
 
 def remove_country_progress(user_id: int, country_id: str) -> bool:
+    """Ta bort land från användarens progress. Returnerar true om det lyckades."""
     conn = _connect()
     try:
         _exec(conn, "DELETE FROM progress WHERE user_id=? AND country_id=?",
@@ -175,6 +146,7 @@ def remove_country_progress(user_id: int, country_id: str) -> bool:
         conn.close()
 
 def get_progress(user_id: int) -> List[str]:
+    """Returnerar lista med land-id för användarens progress."""
     conn = _connect()
     try:
         rows = _exec(conn, "SELECT country_id FROM progress WHERE user_id=? ORDER BY country_id", (int(user_id),)).fetchall()
@@ -183,6 +155,7 @@ def get_progress(user_id: int) -> List[str]:
         conn.close()
 
 def has_access(user_id: int, country_id: str) -> bool:
+    """Returnerar True om användaren har klarat landet."""
     conn = _connect()
     try:
         row = _exec(conn, "SELECT 1 FROM progress WHERE user_id=? AND country_id=?",
@@ -192,6 +165,7 @@ def has_access(user_id: int, country_id: str) -> bool:
         conn.close()
 
 def user_id_by_username(username: str) -> Optional[int]:
+    """Returnerar user_id för angivet användarnamn, eller None om användaren inte finns."""
     conn = _connect()
     try:
         row = _exec(conn, "SELECT id FROM users WHERE username=?", (username.strip(),)).fetchone()

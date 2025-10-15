@@ -15,7 +15,6 @@ def _try_load(path: str):
 # Try a few sensible locations; keep your own JSON where you like
 _CANDIDATES = [
     "media/data/countries.json",
-    "media/data/50_wellknown_countries_cities.json",
     "data/countries.json",
 ]
 
