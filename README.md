@@ -36,9 +36,10 @@ To run the game, use the Maze executable.
 ├── report
 ├── venv
 ├── game.py
-└── settings.py
-└── inputbox.py
-└── login.py
+├── settings.py
+├── inputbox.py
+├── login.py
 └── README.md
+
 
 
