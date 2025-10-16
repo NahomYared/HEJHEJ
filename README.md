@@ -1,6 +1,6 @@
 Prerequisites
 Note: It is assumed that Python is already installed.
-
+ 
 Setting up venv
 If you want to set up a python virtual environment for the project, follow the below instructions:
 
