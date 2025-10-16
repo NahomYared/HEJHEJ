@@ -1,21 +1,25 @@
-Prerequisites
-Note: It is assumed that Python is already installed.
- 
-Setting up venv
-If you want to set up a python virtual environment for the project, follow the below instructions:
+## Prerequisites
+Python 3.x installerat.
 
+## Set up venv
+```bash
 python -m venv venv
+# macOS/Linux:
 source venv/bin/activate
+# Windows (PowerShell):
+# .\venv\Scripts\Activate.ps1
+
 python -m pip install -r requirements.txt
 
-To run the game, use the Maze executable.
+Run game
 ./Maze
-
+# eller
+python game.py
 
 ├── data
 │   ├─ game.db           # SQLite-databas för användare, scores, progress
 │   ├─ LeastTimes.txt    # Bästa tider (en rad per nivå)
-│   └─ path.txt 
+│   └─ path.txt
 ├── media
 │   ├── fonts
 │   ├── images
@@ -40,6 +44,4 @@ To run the game, use the Maze executable.
 ├── inputbox.py
 ├── login.py
 └── README.md
-
-
 
