@@ -2,14 +2,12 @@ import time
 import random
 import pygame
 from settings import *
-from Modules import AuthDB  # <-- ADDED: progress & user lookup från pickle
+from Modules import AuthDB  
 
-# ADDED: edge-state för country-nav (behöver leva över frames)
 _prev_country_prev_clicked = False
 _prev_country_next_clicked = False
 _prev_country_back_clicked = False
 
-# ADDED: ladda och cacha låsikon
 LOCK_IMAGE_PATH = "media/images/buttons/lock.png"
 _lock_img = None
 def _lock_icon_surface():
@@ -109,8 +107,8 @@ while True:
         elif MM_Play.is_Clicked():
             main_menu.is_active = False
             time.sleep(ButtonDelay)
-            # Game.is_active = True                # <<< REMOVED (we go to country chooser first)
-            CountrySelectionActive = True          # <<< ADDED
+            # Game.is_active = True                
+            CountrySelectionActive = True         
         elif MM_Scores.is_Clicked():
             main_menu.is_active = False
             time.sleep(ButtonDelay)
@@ -126,7 +124,7 @@ while True:
                 Game.GameOverScreen = False
                 Game.LevelScreen = True
                 main_menu.is_active = True
-                Game.db_recorded = False  # <-- återställ
+                Game.db_recorded = False  
                 time.sleep(BackButtonDelay)
                 pygame.mixer.music.stop()
                 pygame.mixer.music.load(IntroMusicAddress)
@@ -134,7 +132,7 @@ while True:
                 pygame.mixer.music.play(-1)
 
 
-    # ---------------- COUNTRY SELECTION (FIXED MINIMAL) ----------------
+    # logik för Landval
     if 'CountrySelectionActive' in globals() and CountrySelectionActive:
         # Background (same animated style)
         main_menu.BackgroundFrameIndex = (MillisecondsPassed % (
@@ -147,7 +145,6 @@ while True:
 
         total = len(CountryButtons)
 
-        # ADDED: clamp av CountryPage innan vi räknar slice
         per = COUNTRIES_PER_PAGE  # ADDED
         max_page = 0 if total == 0 else ((total - 1) // per)  # ADDED
         if CountryPage < 0: CountryPage = 0  # ADDED
@@ -158,7 +155,7 @@ while True:
         end = min(start + COUNTRIES_PER_PAGE, total)
         page_buttons = CountryButtons[start:end]
 
-        # Draw buttons ------------- (progress-lås + LÅSIKON) -------------
+        # knappar (progress-lås + LÅSIKON) 
         for i_btn, btn in enumerate(page_buttons):
             btn.display()
             country_id = Countries.COUNTRIES[start + i_btn]["country"]
@@ -187,7 +184,7 @@ while True:
                         unlocked = True
 
             if not unlocked:
-                # Rita en låsikon centrerad på knappen (ca 80% av min(rect.w, rect.h))
+                # Rita en låsikon centrerad på knappen (ca 80% )
                 rect = getattr(btn, "ButtonRect", None) or getattr(btn, "rect", None)
                 icon = _lock_icon_surface()
                 if rect and icon:
@@ -195,7 +192,6 @@ while True:
                     if size > 0:
                         icon_scaled = pygame.transform.smoothscale(icon, (size, size))
                         screen.blit(icon_scaled, (rect.centerx - size // 2, rect.centery - size // 2))
-        # -----------------------------------------------------------------
 
         # Navigation
         if total > COUNTRIES_PER_PAGE:
@@ -206,18 +202,17 @@ while True:
         else:
             CountryBack.display()
 
-        # ADDED: Edge-trigger för navknappar
-        cur_prev = (CountryPage > 0 and CountryPrev.is_Clicked()) if total > COUNTRIES_PER_PAGE else False  # ADDED
-        cur_next = (end < total and CountryNext.is_Clicked()) if total > COUNTRIES_PER_PAGE else False       # ADDED
-        cur_back = CountryBack.is_Clicked() if not (total > COUNTRIES_PER_PAGE) else False                   # ADDED
+        cur_prev = (CountryPage > 0 and CountryPrev.is_Clicked()) if total > COUNTRIES_PER_PAGE else False  
+        cur_next = (end < total and CountryNext.is_Clicked()) if total > COUNTRIES_PER_PAGE else False      
+        cur_back = CountryBack.is_Clicked() if not (total > COUNTRIES_PER_PAGE) else False                   
 
-        prev_edge = cur_prev and not _prev_country_prev_clicked   # ADDED
-        next_edge = cur_next and not _prev_country_next_clicked   # ADDED
-        back_edge = cur_back and not _prev_country_back_clicked   # ADDED
+        prev_edge = cur_prev and not _prev_country_prev_clicked  
+        next_edge = cur_next and not _prev_country_next_clicked   
+        back_edge = cur_back and not _prev_country_back_clicked   
 
-        _prev_country_prev_clicked = cur_prev   # ADDED
-        _prev_country_next_clicked = cur_next   # ADDED
-        _prev_country_back_clicked = cur_back   # ADDED
+        _prev_country_prev_clicked = cur_prev   
+        _prev_country_next_clicked = cur_next  
+        _prev_country_back_clicked = cur_back   
 
         # Click handling (ignorera klick på låsta)
         for i_btn, btn in enumerate(page_buttons):
@@ -254,26 +249,25 @@ while True:
                 Game.is_active = True
                 Game.LevelScreen = True
                 # FIX: ny runda startar → progress får sparas igen
-                Game.progress_recorded = False  # <-- FIX: nollställ per runda
+                Game.progress_recorded = False  
                 break
 
         if total > COUNTRIES_PER_PAGE:
-            if prev_edge:                              # CHANGED (edge + clamp)
-                CountryPage = max(0, CountryPage - 1) # CHANGED
+            if prev_edge:                             
+                CountryPage = max(0, CountryPage - 1) 
                 time.sleep(ButtonDelay)
-            if next_edge:                              # CHANGED (edge + clamp)
-                CountryPage = min(max_page, CountryPage + 1)  # CHANGED
+            if next_edge:                             
+                CountryPage = min(max_page, CountryPage + 1) 
                 time.sleep(ButtonDelay)
-            if back_edge:                              # CHANGED (använd CountryBack i denna vy)
+            if back_edge:                              
                 CountrySelectionActive = False
                 main_menu.is_active = True
                 time.sleep(BackButtonDelay)
         else:
-            if back_edge:  # CHANGED
+            if back_edge:  
                 CountrySelectionActive = False
                 main_menu.is_active = True
                 time.sleep(BackButtonDelay)
-    # -----------------------------------------------------------
 
     # The Game!
     if Game.is_active:
@@ -297,7 +291,6 @@ while True:
                 elif GLB_Difficult.is_Clicked():
                     Game.Level = 3
 
-                # --- ADDED: choose a random target city from the selected country
                 try:
                     if isinstance(SelectedCities, list) and SelectedCities:
                         Game.TargetCity = random.choice(SelectedCities)
@@ -332,7 +325,6 @@ while True:
                                                       StopWatchButtonPos)
             StopWatchButton.display()
 
-            # --- ADDED: “GO TO CITY” label under the stopwatch
             target_label = ("GO TO " + Game.TargetCity.upper()) if getattr(Game, "TargetCity", None) else "FIND THE EXIT"
             TargetButton = MainMenu.MainMenuButton(
                 screen, target_label,
@@ -340,7 +332,6 @@ while True:
                 (StopWatchButtonPos[0], StopWatchButtonPos[1] + 100)
             )
             TargetButton.display()
-            # -----------------------------------------------------
 
             # Change Background Button
             Game_ChangeBackground.display()
@@ -420,10 +411,10 @@ while True:
                                                       MMButtonsImage, HighScoreButtonPos)
             HighScoreButton.display()
 
-            # --- SPARA PROGRESS: exakt en gång per runda ---
+            # SPARA PROGRESS: exakt en gång per runda 
             try:
                 if not hasattr(Game, "progress_recorded"):
-                    Game.progress_recorded = False  # defensivt default
+                    Game.progress_recorded = False  
 
                 uid = None
                 if hasattr(LoginScreen, "user_id") and LoginScreen.user_id is not None:
@@ -433,10 +424,9 @@ while True:
 
                 if (uid is not None) and (not Game.progress_recorded) and ('SelectedCountry' in globals()) and SelectedCountry:
                     AuthDB.add_country_progress(uid, SelectedCountry)
-                    Game.progress_recorded = True  # <-- FIX: blockera fler sparningar samma runda
+                    Game.progress_recorded = True  
             except Exception:
                 pass
-            # ------------------------------------------------
 
             # Back to Main Menu
             if GameOver_Back.is_Clicked():
